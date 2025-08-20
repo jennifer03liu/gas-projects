@@ -25,7 +25,7 @@ const CONFIG = {
   // ===============================================================
   // 考核表相關設定
   // ===============================================================
-  TEMPLATE_SHEET_ID: '1-21yEz0meydk99F1EXOtmzC-HOcPUKue3vnYzoeZ5bE',
+  TEMPLATE_SHEET_ID: '12VcBawYb8C6PIF8UuhoRgnDjtn7XhPL8jh1ekqkmHRc',
   DESTINATION_FOLDER_ID: '1NdnJ-p9PwFEJhh5HzfUKz6o0tgRWkjpV',
   HR_MANAGER_CC_EMAIL: 'rolinghsu@trendforce.com',
   EDITABLE_RANGES: ['B8:I12', 'I16:I22', 'G31', 'H27:I27', 'B26:B32', 'B24:I24', 'F34:I34'],
