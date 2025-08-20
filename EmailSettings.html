@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loader { border-top-color: #3498db; animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-6 max-w-4xl">
+        <div class="bg-white rounded-lg shadow-md p-8">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">信件設定管理</h1>
+            <p class="text-gray-600 mb-6">您可以在此查看並修改各項自動化流程的預設收件人。修改後請點擊「儲存設定」。</p>
+            <form id="settingsForm" class="space-y-8">
+                <!-- 試用期考核 -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-indigo-500 pl-3 mb-4">試用期考核通知</h2>
+                    <div class="space-y-4 pl-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">HR主管副本 (CC)</label>
+                            <input type="text" id="HR_MANAGER_CC_EMAIL" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+                </div>
+                <!-- 新人錄取通知 -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-green-500 pl-3 mb-4">新人錄取通知</h2>
+                     <div class="space-y-4 pl-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">寄件者名稱</label>
+                            <input type="text" id="SENDER_NAME" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+                </div>
+                <!-- 每月員工報告 -->
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-700 border-l-4 border-blue-500 pl-3 mb-4">每月員工異動報告</h2>
+                    <div class="space-y-4 pl-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">老闆收件人 (To)</label>
+                            <input type="email" id="BOSS_EMAIL" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">老闆副本 (CC)</label>
+                            <input type="text" id="BOSS_CC_EMAIL" placeholder="多位請用逗號隔開" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">保險聯絡人收件人 (To)</label>
+                            <input type="email" id="INSURANCE_EMAIL" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium text-gray-600">保險聯絡人副本 (CC)</label>
+                            <input type="text" id="INSURANCE_CC_EMAILS" placeholder="多位請用逗號隔開" class="mt-1 w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                        </div>
+                    </div>
+                </div>
+                <!-- 提交按鈕 -->
+                <div class="text-right pt-6 border-t">
+                    <button type="submit" id="submitButton" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">儲存設定</button>
+                </div>
+            </form>
+        </div>
+        <div id="message" class="mt-6 hidden p-4 rounded-md"></div>
+    </div>
+    <div id="loader" class="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-50 flex justify-center items-center hidden z-50">
+        <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('loader').classList.remove('hidden');
+            google.script.run.withSuccessHandler(s => {
+                Object.keys(s).forEach(k => { if(document.getElementById(k)) document.getElementById(k).value = s[k]; });
+                document.getElementById('loader').classList.add('hidden');
+            }).withFailureHandler(e => showError(e)).getEmailSettings();
+        });
+        document.getElementById('settingsForm').addEventListener('submit', e => {
+            e.preventDefault();
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('submitButton').disabled = true;
+            const settings = {};
+            document.querySelectorAll('input').forEach(i => settings[i.id] = i.value);
+            google.script.run.withSuccessHandler(m => {
+                document.getElementById('submitButton').disabled = false;
+                document.getElementById('loader').classList.add('hidden');
+                showMessage(m, 'success');
+            }).withFailureHandler(e => showError(e)).saveEmailSettings(settings);
+        });
+        function showError(error) {
+            document.getElementById('submitButton').disabled = false;
+            document.getElementById('loader').classList.add('hidden');
+            showMessage(error.message, 'error');
+        }
+        function showMessage(msg, type) {
+            const div = document.getElementById('message');
+            div.textContent = msg;
+            div.className = `mt-6 p-4 rounded-md ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            div.classList.remove('hidden');
+            setTimeout(() => div.classList.add('hidden'), 5000);
+        }
+    </script>
+</body>
+</html>

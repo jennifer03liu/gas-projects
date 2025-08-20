@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 簡單的載入中動畫樣式 */
+        .loader { border-top-color: #3498db; -webkit-animation: spinner 1.5s linear infinite; animation: spinner 1.5s linear infinite; }
+        @-webkit-keyframes spinner { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* 【新增】副本收件人標籤樣式 */
+        .cc-pill { display: inline-flex; align-items: center; background-color: #e0e7ff; color: #4338ca; padding: 4px 8px; border-radius: 9999px; font-size: 14px; margin: 2px; }
+        .cc-pill-remove { margin-left: 8px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
+        <div class="bg-white rounded-lg shadow-md p-6 sm:p-8">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 mb-6 border-b pb-4">新進人員任用登錄</h1>
+            <form id="recruitmentForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="company" class="block text-sm font-medium text-gray-700 mb-1">公司別*</label>
+                        <select id="company" name="company" required class="w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                            <option value="">請選擇</option><option value="集邦科技">集邦科技</option><option value="荃富科技">荃富科技</option><option value="拓墣科技">拓墣科技</option><option value="新報科技">新報科技</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="employeeType" class="block text-sm font-medium text-gray-700 mb-1">員工類型*</label>
+                        <select id="employeeType" name="employeeType" required class="w-full p-2 border border-gray-300 rounded-md shadow-sm">
+                            <option value="">請選擇</option><option value="正職">正職</option><option value="非正職">非正職</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="relative">
+                    <label for="supervisor" class="block text-sm font-medium text-gray-700 mb-1">直屬主管*</label>
+                    <input type="text" id="supervisor" name="supervisor" required placeholder="請輸入主管姓名關鍵字..." class="w-full p-2 border border-gray-300 rounded-md shadow-sm" autocomplete="off">
+                    <div id="supervisorSuggestions" class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                </div>
+                <!-- 【新增】副本寄送人員 (CC) -->
+                <div>
+                    <label for="ccInput" class="block text-sm font-medium text-gray-700 mb-1">副本寄送人員 (CC)</label>
+                    <div class="relative">
+                        <input type="text" id="ccInput" placeholder="搜尋姓名或匿稱以新增..." 
+                               class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                               autocomplete="off">
+                        <div id="ccSuggestions" class="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                    </div>
+                    <div id="ccRecipientsContainer" class="mt-2">
+                        <!-- 已選擇的副本收件人會顯示在此 -->
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label for="employeeName" class="block text-sm font-medium text-gray-700 mb-1">員工姓名*</label><input type="text" id="employeeName" name="employeeName" required class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></div>
+                    <div><label for="candidateEmail" class="block text-sm font-medium text-gray-700 mb-1">應徵者Email*</label><input type="email" id="candidateEmail" name="candidateEmail" required class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label for="department" class="block text-sm font-medium text-gray-700 mb-1">部門*</label><input type="text" id="department" name="department" required class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></div>
+                    <div><label for="jobTitle" class="block text-sm font-medium text-gray-700 mb-1">職稱*</label><input type="text" id="jobTitle" name="jobTitle" required class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div><label for="onboardingDate" class="block text-sm font-medium text-gray-700 mb-1">報到日期*</label><input type="date" id="onboardingDate" name="onboardingDate" required class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></div>
+                    <div><label for="salary" class="block text-sm font-medium text-gray-700 mb-1">薪資(月薪)*</label><input type="number" id="salary" name="salary" required class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></div>
+                </div>
+                <div>
+                    <label for="otherSalaryInfo" class="block text-sm font-medium text-gray-700 mb-1">其他薪資說明</label>
+                    <textarea id="otherSalaryInfo" name="otherSalaryInfo" rows="4" class="w-full p-2 border border-gray-300 rounded-md shadow-sm"></textarea>
+                </div>
+                <div class="text-right"><button type="submit" id="submitButton" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">提交</button></div>
+            </form>
+        </div>
+        <div id="message" class="mt-6 hidden p-4 rounded-md"></div>
+    </div>
+    <div id="loader" class="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-50 flex justify-center items-center hidden z-50"><div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div></div>
+    <script>
+        const supervisorInput = document.getElementById('supervisor'), suggestionsDiv = document.getElementById('supervisorSuggestions'), form = document.getElementById('recruitmentForm');
+        const ccInput = document.getElementById('ccInput');
+        const ccSuggestions = document.getElementById('ccSuggestions');
+        const ccRecipientsContainer = document.getElementById('ccRecipientsContainer');
+        let selectedCcRecipients = []; // 儲存已選擇的副本收件人Email
+        let debounceTimer;
+        supervisorInput.addEventListener('input', e => {
+            clearTimeout(debounceTimer);
+            if (e.target.value.length < 1) { suggestionsDiv.classList.add('hidden'); return; }
+            debounceTimer = setTimeout(() => google.script.run.withSuccessHandler(s => {
+                suggestionsDiv.innerHTML = s && s.length > 0 ? s.map(i => `<div class="p-2 hover:bg-gray-100 cursor-pointer">${i}</div>`).join('') : '<div class="p-2 text-gray-500">無符合的主管</div>';
+                suggestionsDiv.classList.remove('hidden');
+            }).withFailureHandler(showError).searchSupervisors(e.target.value), 300);
+        });
+        suggestionsDiv.addEventListener('click', e => {
+            if (e.target.tagName === 'DIV' && e.target.textContent !== '無符合的主管') {
+                supervisorInput.value = e.target.textContent;
+                suggestionsDiv.classList.add('hidden');
+            }
+        });
+        document.addEventListener('click', e => { 
+            // 關閉主管建議框
+            if (!supervisorInput.contains(e.target) && !suggestionsDiv.contains(e.target)) 
+                suggestionsDiv.classList.add('hidden');
+            
+            // 【新增】關閉副本收件人建議框
+            if (!ccInput.contains(e.target) && !ccSuggestions.contains(e.target)) 
+                ccSuggestions.classList.add('hidden');
+        });
+        
+                // 【新增】處理副本收件人模糊搜尋
+        ccInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value;
+            clearTimeout(debounceTimer);
+            if (searchTerm.length < 1) {
+                ccSuggestions.classList.add('hidden');
+                return;
+            }
+            debounceTimer = setTimeout(() => {
+                google.script.run
+                    .withSuccessHandler(showCcSuggestions)
+                    .withFailureHandler(showError)
+                    .searchCcRecipients(searchTerm);
+            }, 300);
+        });
+
+        // 【新增】顯示副本收件人搜尋建議
+        function showCcSuggestions(recipients) {
+            if (recipients && recipients.length > 0) {
+                ccSuggestions.innerHTML = recipients.map(r => 
+                    `<div class="p-2 hover:bg-gray-100 cursor-pointer" data-email="${r.email}">${r.display}</div>`
+                ).join('');
+                ccSuggestions.classList.remove('hidden');
+            } else {
+                ccSuggestions.innerHTML = '<div class="p-2 text-gray-500">無符合的人員</div>';
+                ccSuggestions.classList.remove('hidden');
+            }
+        }
+
+        // 【新增】處理副本收件人建議選項的點擊事件
+        ccSuggestions.addEventListener('click', (e) => {
+            if (e.target.tagName === 'DIV' && e.target.dataset.email) {
+                const email = e.target.dataset.email;
+                const display = e.target.textContent;
+                
+                // 防止重複加入
+                if (!selectedCcRecipients.some(r => r.email === email)) {
+                    selectedCcRecipients.push({ email, display });
+                    renderCcRecipients();
+                }
+                
+                ccInput.value = ''; // 清空輸入框
+                ccSuggestions.classList.add('hidden');
+            }
+        });
+
+        // 【新增】渲染已選擇的副本收件人標籤
+        function renderCcRecipients() {
+            ccRecipientsContainer.innerHTML = selectedCcRecipients.map(r => 
+                `<div class="cc-pill">
+                    <span>${r.display}</span>
+                    <span class="cc-pill-remove" data-email="${r.email}" title="移除">&times;</span>
+                </div>`
+            ).join('');
+        }
+
+        // 【新增】處理移除副本收件人標籤的點擊事件
+        ccRecipientsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('cc-pill-remove')) {
+                const emailToRemove = e.target.dataset.email;
+                selectedCcRecipients = selectedCcRecipients.filter(r => r.email !== emailToRemove);
+                renderCcRecipients();
+            }
+        });
+        
+        
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            
+            // 取得表單基本資料
+            const formData = Object.fromEntries(new FormData(form));
+            
+            // 【修正】加入副本收件人資料
+            formData.ccEmails = selectedCcRecipients.map(r => r.email);
+            
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('submitButton').disabled = true;
+            
+            google.script.run
+                .withSuccessHandler(m => {
+                    document.getElementById('loader').classList.add('hidden');
+                    document.getElementById('submitButton').disabled = false;
+                    showMessage(m, 'success');
+                    form.reset();
+                    // 【新增】清除副本收件人資料
+                    selectedCcRecipients = [];
+                    renderCcRecipients();
+                })
+                .withFailureHandler(showError)
+                .processRecruitmentForm(formData); // 【修正】使用合併後的資料
+        });
+        function showError(error) {
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('submitButton').disabled = false;
+            showMessage(error.message, 'error');
+        }
+        function showMessage(msg, type) {
+            const div = document.getElementById('message');
+            div.textContent = msg;
+            div.className = `mt-6 p-4 rounded-md ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+            div.classList.remove('hidden');
+            setTimeout(() => div.classList.add('hidden'), 5000);
+        }
+    </script>
+</body>
+</html>
