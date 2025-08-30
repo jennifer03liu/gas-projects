@@ -118,9 +118,9 @@ function generateAndSendReports(reportYear, reportMonth, isTest) {
     // 5. 寄送 Email
     if (newHires.length > 0 || departingEmployees.length > 0) {
       // 【v11.2 修改】老闆的信件使用過濾後的新進名單 (newHiresForBoss)
-      sendBossEmail(newHiresForBoss, departingEmployees, colIndex, excelBlob, reportYear, reportMonth);
+      sendBossEmail(newHiresForBoss, departingEmployees, colIndex, excelBlob, reportYear, reportMonth, isTest);
       // 保險聯絡人的信件仍使用完整的新進名單 (newHires)，因為加退保都需要通知
-      sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth);
+      sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth, isTest);
     } else {
       Logger.log(`在 ${reportYear} 年 ${reportMonth} 月沒有偵測到員工異動，但仍會寄送該月通訊錄。`);
       sendBossEmail([], [], colIndex, excelBlob, reportYear, reportMonth);
@@ -211,12 +211,20 @@ function sendBossEmail(newHires, departingEmployees, colIndex, attachmentBlob, r
     departingEmployees.forEach(row => { htmlBody += `<tr><td>${row[colIndex.department]}</td><td>${row[colIndex.chineseName]}</td><td>${row[colIndex.englishName]}</td><td>${row[colIndex.jobTitle]}</td></tr>`; });
     htmlBody += `</table>`;
   }
-  if (newHires.length === 0 && departingEmployees.length === 0) { htmlBody += `<p>p.s. 上個月無人員異動。</p>`; }
-  
-  const signature = getGmailSignature();
-  const mailOptions = { htmlBody: htmlBody + signature, attachments: [attachmentBlob] };
-  const cc = getSetting('BOSS_CC_EMAIL');
-  if (cc) { mailOptions.cc = cc; }
+  if (newHires.length === 0 && departingEmployees.length === 0) { htmlBody += `<p>p.s. 上個月無人員異動。</p>`; }
+  
+  const signature = getGmailSignature();
+  const mailOptions = { htmlBody: htmlBody + signature, attachments: [attachmentBlob] };
+  
+  let recipient = getSetting('BOSS_EMAIL');
+  const cc = getSetting('BOSS_CC_EMAIL');
+
+  if (isTest) {
+    recipient = Session.getActiveUser().getEmail(); // 測試模式下，收件人改為當前使用者
+    if (subject.indexOf('[測試]') === -1) { subject = `[測試] ${subject}`; } // 主旨加上測試標記
+  } else if (cc) {
+    mailOptions.cc = cc;
+  }
   
   GmailApp.sendEmail(getSetting('BOSS_EMAIL'), subject, "", mailOptions);
   console.log(`已寄送 ${subject} 給老闆。`);
@@ -241,8 +249,15 @@ function sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, 
     
     const signature = getGmailSignature();
     const mailOptions = { htmlBody: htmlBody + signature };
-    const cc = getSetting('INSURANCE_CC_EMAILS');
-    if (cc) { mailOptions.cc = cc; }
+    let recipient = getSetting('INSURANCE_EMAIL');
+    const cc = getSetting('INSURANCE_CC_EMAILS');
+
+    if (isTest) {
+      recipient = Session.getActiveUser().getEmail(); // 測試模式下，收件人改為當前使用者
+      if (subject.indexOf('[測試]') === -1) { subject = `[測試] ${subject}`; } // 主旨加上測試標記
+    } else if (cc) {
+      mailOptions.cc = cc;
+    }
     
     GmailApp.sendEmail(getSetting('INSURANCE_EMAIL'), subject, "", mailOptions);
     console.log(`已寄送 ${subject} 給保險聯絡人。`);
