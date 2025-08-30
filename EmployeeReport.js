@@ -1,21 +1,76 @@
 /**
  * @fileoverview 每月定時發送新進與離職員工報告。
- * @version 11.2
+ * @version 12
  */
 
 /**
- * 【主要執行函式】
- * 由時間觸發器或手動選單呼叫，產生並寄送上一個月的員工異動報告。
+ * 【測試用函式】
+ * 由 UI 選單觸發，讓使用者輸入年月，產生測試報告並寄給自己。
+ */
+function sendTestReport() {
+  try {
+    const ui = SpreadsheetApp.getUi();
+    // 提示使用者輸入年份
+    const yearResponse = ui.prompt('測試報告', '請輸入報告年份 (YYYY)，例如: 2025', ui.ButtonSet.OK_CANCEL);
+    if (yearResponse.getSelectedButton() !== ui.Button.OK || yearResponse.getResponseText() === '') {
+      return; // 使用者取消操作
+    }
+    const year = yearResponse.getResponseText().trim();
+
+    // 提示使用者輸入月份
+    const monthResponse = ui.prompt('測試報告', '請輸入報告月份 (1-12)，例如: 8', ui.ButtonSet.OK_CANCEL);
+    if (monthResponse.getSelectedButton() !== ui.Button.OK || monthResponse.getResponseText() === '') {
+      return; // 使用者取消操作
+    }
+    const month = monthResponse.getResponseText().trim();
+
+    // 簡單驗證輸入格式
+    if (isNaN(year) || isNaN(month) || month < 1 || month > 12 || year.length !== 4) {
+      ui.alert('輸入無效', '請輸入正確的四位數年份和 1-12 的月份。', ui.ButtonSet.OK);
+      return;
+    }
+
+    ui.alert('測試報告執行中', `將產生 ${year} 年 ${month} 月的報告並寄給您自己，請稍後至信箱確認。`, ui.ButtonSet.OK);
+    // 呼叫核心函式並代入測試參數
+    generateAndSendReports(year, parseInt(month), true);
+    
+  } catch (e) {
+    const errorMessage = `執行測試報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
+    Logger.log(errorMessage);
+    SpreadsheetApp.getUi().alert(`執行測試失敗: ${e.message}`);
+  }
+}
+
+/**
+ * 【主要執行函式 - 自動排程用】
+ * 由時間觸發器呼叫，自動產生並寄送上一個月的員工異動報告。
  */
 function sendMonthlyEmployeeReports() {
   try {
-    // 1. 計算報告應屬的月份（上一個月）
-    const reportDate = new Date(); // e.g., 8月1日
-    reportDate.setDate(0); // 回溯到上個月最後一天, e.g., 7月31日
+    const reportDate = new Date();
+    reportDate.setDate(0); // 回溯到上個月最後一天
     
-    const reportYear = reportDate.getFullYear().toString(); // "2025"
-    const reportMonth = reportDate.getMonth() + 1; // 7
+    const reportYear = reportDate.getFullYear().toString();
+    const reportMonth = reportDate.getMonth() + 1;
     
+    // 呼叫核心函式，isTest 設為 false
+    generateAndSendReports(reportYear, reportMonth, false);
+
+    console.log('員工異動報告已成功寄出！');
+  } catch (e) {
+    const errorMessage = `執行員工報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
+    Logger.log(errorMessage);
+  }
+}
+
+/**
+ * 【核心邏輯函式】
+ * 負責產生報告、篩選資料與觸發 Email 寄送。
+ * @param {string} reportYear 報告年份，格式 "YYYY"。
+ * @param {number} reportMonth 報告月份，數字 1-12。
+ * @param {boolean} isTest 是否為測試模式。
+ */
+function generateAndSendReports(reportYear, reportMonth, isTest) {
     // 2. 準備檔案名稱
     const sourceContactListName = `${reportMonth}月員工通訊錄_Private`;
     const destinationContactListName = `${reportMonth}月員工通訊錄`;
@@ -31,6 +86,7 @@ function sendMonthlyEmployeeReports() {
     if (!excelBlob) {
       throw new Error(`建立並轉換 "${destinationContactListName}" 失敗。`);
     }
+    
     
     // 4. 從員工總控制表篩選異動資料
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(getSetting('EMPLOYEE_SHEET_NAME'));
@@ -71,12 +127,10 @@ function sendMonthlyEmployeeReports() {
     }
     // SpreadsheetApp.getUi().alert('員工異動報告已成功寄出！'); // 舊的 UI 通知
     console.log('員工異動報告已成功寄出！'); // 改為背景記錄，不在介面跳出通知
-  } catch (e) {
-    const errorMessage = `執行員工報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
-    Logger.log(errorMessage); // 在日誌中記錄詳細錯誤
+  } 
+
     // SpreadsheetApp.getUi().alert(`執行失敗: ${e.message}`); // 舊的 UI 通知
-  }
-}
+
 
 /**
  * 輔助函式：建立新的 Google Sheet，複製分頁，並將其匯出為 Excel Blob。
@@ -112,8 +166,11 @@ function createNewSheetAndExportAsExcel(sourceFile, destBaseFolderId, yearStr, f
   } catch (e) {
     console.error("建立與轉換新檔案時發生錯誤: " + e.toString());
     if (newFileId) {
-        try { DriveApp.getFileById(newFileId).setTrashed(true); }
-        catch (err) { console.error("刪除不完整檔案時失敗: " + err.toString()); }
+        try { 
+          DriveApp.getFileById(newFileId).setTrashed(true); }
+        catch (err) { 
+          console.error("刪除不完整檔案時失敗: " + err.toString()); 
+        }
     }
     return null;
   }

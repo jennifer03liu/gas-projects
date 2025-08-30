@@ -15,6 +15,7 @@ function onOpen() {
     .addItem('手動同步部門群組', 'syncAllDepartmentGroups')
     .addSeparator()
     .addItem('手動觸發每月員工報告', 'sendMonthlyEmployeeReports')
+    .addItem('執行測試報告', 'sendTestReport')
     .addSeparator()
     .addItem('修改信件設定', 'showEmailSettingsUI')
     .addToUi();
