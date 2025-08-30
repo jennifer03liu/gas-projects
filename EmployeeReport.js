@@ -49,7 +49,7 @@ function sendMonthlyEmployeeReports() {
       birthDate: headers.indexOf("出生日期")
     };
     
-    const reportJsMonth = reportMonth - 1; // JavaScript 的月份是 0-11
+    const reportJsMonth = reportMonth-1 ; // JavaScript 的月份是 0-11
     const newHires = data.filter(row => { const d = row[colIndex.startDate]; return d instanceof Date && d.getFullYear().toString() === reportYear && d.getMonth() === reportJsMonth; });
     const departingEmployees = data.filter(row => { const d = row[colIndex.endDate]; return d instanceof Date && d.getFullYear().toString() === reportYear && d.getMonth() === reportJsMonth; });
 
@@ -61,10 +61,12 @@ function sendMonthlyEmployeeReports() {
       Logger.log(`在 ${reportYear} 年 ${reportMonth} 月沒有偵測到員工異動，但仍會寄送該月通訊錄。`);
       sendBossEmail([], [], colIndex, excelBlob, reportYear, reportMonth);
     }
-    SpreadsheetApp.getUi().alert('員工異動報告已成功寄出！');
-  } catch (e) {
-    Logger.log(`執行員工報告時發生錯誤: ${e.message}`);
-    SpreadsheetApp.getUi().alert(`執行失敗: ${e.message}`);
+    // SpreadsheetApp.getUi().alert('員工異動報告已成功寄出！'); // 舊的 UI 通知
+    console.log('員工異動報告已成功寄出！'); // 改為背景記錄，不在介面跳出通知
+  } catch (e) {
+    const errorMessage = `執行員工報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
+    Logger.log(errorMessage); // 在日誌中記錄詳細錯誤
+    // SpreadsheetApp.getUi().alert(`執行失敗: ${e.message}`); // 舊的 UI 通知
   }
 }
 
