@@ -1,6 +1,6 @@
 /**
  * @fileoverview 每月定時發送新進與離職員工報告。
- * @version 11.1
+ * @version 11.2
  */
 
 /**
@@ -53,9 +53,17 @@ function sendMonthlyEmployeeReports() {
     const newHires = data.filter(row => { const d = row[colIndex.startDate]; return d instanceof Date && d.getFullYear().toString() === reportYear && d.getMonth() === reportJsMonth; });
     const departingEmployees = data.filter(row => { const d = row[colIndex.endDate]; return d instanceof Date && d.getFullYear().toString() === reportYear && d.getMonth() === reportJsMonth; });
 
+    // 4a. 【v11.2 修改】篩選出當月到職又離職的員工，在老闆的信件中僅顯示為離職
+    // 建立一個包含所有離職員工 ID 的 Set，方便快速查找
+    const departingEmployeeIds = new Set(departingEmployees.map(row => row[colIndex.employeeId]));
+    // 產生一個給老闆用的新進員工名單，此名單會排除掉也出現在離職名單中的員工
+    const newHiresForBoss = newHires.filter(row => !departingEmployeeIds.has(row[colIndex.employeeId]));
+
     // 5. 寄送 Email
     if (newHires.length > 0 || departingEmployees.length > 0) {
-      sendBossEmail(newHires, departingEmployees, colIndex, excelBlob, reportYear, reportMonth);
+      // 【v11.2 修改】老闆的信件使用過濾後的新進名單 (newHiresForBoss)
+      sendBossEmail(newHiresForBoss, departingEmployees, colIndex, excelBlob, reportYear, reportMonth);
+      // 保險聯絡人的信件仍使用完整的新進名單 (newHires)，因為加退保都需要通知
       sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth);
     } else {
       Logger.log(`在 ${reportYear} 年 ${reportMonth} 月沒有偵測到員工異動，但仍會寄送該月通訊錄。`);
