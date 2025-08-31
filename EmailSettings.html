@@ -62,7 +62,23 @@
                 </div>
             </form>
         </div>
-        <div id="message" class="mt-6 hidden p-4 rounded-md"></div>
+        <!-- 彈出式通知對話框 -->
+        <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+            <div id="modalDialog" class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 transform scale-95 opacity-0 transition-all duration-300">
+                <div class="p-6">
+                    <div class="flex items-center mb-4">
+                        <div id="modalIcon" class="mr-3"></div>
+                        <h3 id="modalTitle" class="text-lg font-semibold text-gray-900"></h3>
+                    </div>
+                    <p id="modalMessage" class="text-gray-600 mb-6"></p>
+                    <div class="flex justify-end">
+                        <button onclick="closeModal()" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors">
+                            確定
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     <div id="loader" class="fixed top-0 left-0 w-full h-full bg-gray-900 bg-opacity-50 flex justify-center items-center hidden z-50">
         <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div>
@@ -93,12 +109,55 @@
             showMessage(error.message, 'error');
         }
         function showMessage(msg, type) {
-            const div = document.getElementById('message');
-            div.textContent = msg;
-            div.className = `mt-6 p-4 rounded-md ${type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
-            div.classList.remove('hidden');
-            setTimeout(() => div.classList.add('hidden'), 5000);
+            const overlay = document.getElementById('modalOverlay');
+            const dialog = document.getElementById('modalDialog');
+            const icon = document.getElementById('modalIcon');
+            const title = document.getElementById('modalTitle');
+            const message = document.getElementById('modalMessage');
+            const button = document.querySelector('#modalOverlay button');
+            
+            // 設定內容
+            if (type === 'success') {
+                title.textContent = '儲存成功';
+                message.textContent = msg;
+                icon.innerHTML = '<svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                button.className = 'px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors';
+            } else {
+                title.textContent = '儲存失敗';
+                message.textContent = msg;
+                icon.innerHTML = '<svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>';
+                button.className = 'px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors';
+            }
+            
+            // 顯示模態對話框
+            overlay.classList.remove('hidden');
+            
+            // 添加動畫效果
+            setTimeout(() => {
+                dialog.style.transform = 'scale(1)';
+                dialog.style.opacity = '1';
+            }, 10);
         }
+        
+        function closeModal() {
+            const overlay = document.getElementById('modalOverlay');
+            const dialog = document.getElementById('modalDialog');
+            
+            // 添加關閉動畫
+            dialog.style.transform = 'scale(0.95)';
+            dialog.style.opacity = '0';
+            
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
+        }
+        
+        // 點擊背景關閉模態對話框
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
     </script>
 </body>
 </html>

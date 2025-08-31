@@ -1,7 +1,10 @@
 /**
- * @fileoverview 每月定時發送新進與離職員工報告。
- * @version 14
- */
+ * @fileoverview 每月定時發送新進與離職員工報告。
+ * @version 15
+ * 
+ * v15 改進：
+ * - 改善測試報告的 UI 體驗，改為靜默執行，僅在失敗時顯示錯誤訊息
+ */
 
 /**
  * 【測試用函式】
@@ -30,9 +33,13 @@ function sendTestReport() {
       return;
     }
 
-    ui.alert('測試報告執行中', `將產生 ${year} 年 ${month} 月的報告並寄給您自己，請稍後至信箱確認。`, ui.ButtonSet.OK);
-    // 呼叫核心函式並代入測試參數
-    generateAndSendReports(year, parseInt(month), true);
+        // 靜默執行，不顯示執行中的提示
+    try {
+      generateAndSendReports(year, parseInt(month), true);
+      // 成功時不通知，讓使用者自己檢查信箱
+    } catch (error) {
+      ui.alert('執行失敗', `測試報告寄送失敗：${error.message}`, ui.ButtonSet.OK);
+    }
     
   } catch (e) {
     const errorMessage = `執行測試報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
@@ -115,13 +122,13 @@ function generateAndSendReports(reportYear, reportMonth, isTest) {
     // 產生一個給老闆用的新進員工名單，此名單會排除掉也出現在離職名單中的員工
     const newHiresForBoss = newHires.filter(row => !departingEmployeeIds.has(row[colIndex.employeeId]));
 
-    // 5. 寄送 Email
-    if (newHires.length > 0 || departingEmployees.length > 0) {
-      // 【v11.2 修改】老闆的信件使用過濾後的新進名單 (newHiresForBoss)
-      sendBossEmail(newHiresForBoss, departingEmployees, colIndex, excelBlob, reportYear, reportMonth, isTest);
-      // 保險聯絡人的信件仍使用完整的新進名單 (newHires)，因為加退保都需要通知
-      sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth, isTest);
-    } else {
+        // 5. 寄送 Email
+    if (newHires.length > 0 || departingEmployees.length > 0) {
+      // 【v11.2 修改】老闆的信件使用過濾後的新進名單 (newHiresForBoss)
+      sendBossEmail(newHiresForBoss, departingEmployees, colIndex, excelBlob, reportYear, reportMonth, isTest);
+      // 保險聯絡人的信件仍使用完整的新進名單 (newHires)，因為加退保都需要通知
+      sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth, isTest);
+    } else {
       Logger.log(`在 ${reportYear} 年 ${reportMonth} 月沒有偵測到員工異動，但仍會寄送該月通訊錄。`);
       // 【修正 1】在呼叫時補上 isTest 參數
       sendBossEmail([], [], colIndex, excelBlob, reportYear, reportMonth, isTest);
