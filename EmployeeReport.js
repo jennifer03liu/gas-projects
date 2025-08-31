@@ -7,46 +7,51 @@
  */
 
 /**
- * 【測試用函式】
- * 由 UI 選單觸發，讓使用者輸入年月，產生測試報告並寄給自己。
- */
+ * 【測試用函式】
+ * 由 UI 選單觸發，讓使用者輸入年月，產生測試報告並寄給自己。
+ */
 function sendTestReport() {
-  try {
-    const ui = SpreadsheetApp.getUi();
-    // 提示使用者輸入年份
-    const yearResponse = ui.prompt('測試報告', '請輸入報告年份 (YYYY)，例如: 2025', ui.ButtonSet.OK_CANCEL);
-    if (yearResponse.getSelectedButton() !== ui.Button.OK || yearResponse.getResponseText() === '') {
-      return; // 使用者取消操作
-    }
-    const year = yearResponse.getResponseText().trim();
+  try {
+    const ui = SpreadsheetApp.getUi();
+    
+    // 提示使用者輸入年份
+    const yearResponse = ui.prompt('測試報告', '請輸入報告年份 (YYYY)，例如: 2025', ui.ButtonSet.OK_CANCEL);
+    if (yearResponse.getSelectedButton() !== ui.Button.OK || yearResponse.getResponseText() === '') {
+      return; // 使用者取消操作
+    }
+    const year = yearResponse.getResponseText().trim();
 
-    // 提示使用者輸入月份
-    const monthResponse = ui.prompt('測試報告', '請輸入報告月份 (1-12)，例如: 8', ui.ButtonSet.OK_CANCEL);
-    if (monthResponse.getSelectedButton() !== ui.Button.OK || monthResponse.getResponseText() === '') {
-      return; // 使用者取消操作
-    }
-    const month = monthResponse.getResponseText().trim();
+    // 提示使用者輸入月份
+    const monthResponse = ui.prompt('測試報告', '請輸入報告月份 (1-12)，例如: 8', ui.ButtonSet.OK_CANCEL);
+    if (monthResponse.getSelectedButton() !== ui.Button.OK || monthResponse.getResponseText() === '') {
+      return; // 使用者取消操作
+    }
+    const month = monthResponse.getResponseText().trim();
 
-    // 簡單驗證輸入格式
-    if (isNaN(year) || isNaN(month) || month < 1 || month > 12 || year.length !== 4) {
-      ui.alert('輸入無效', '請輸入正確的四位數年份和 1-12 的月份。', ui.ButtonSet.OK);
-      return;
-    }
+    // 簡單驗證輸入格式
+    if (isNaN(year) || isNaN(month) || month < 1 || month > 12 || year.length !== 4) {
+      ui.alert('輸入無效', '請輸入正確的四位數年份和 1-12 的月份。', ui.ButtonSet.OK);
+      return;
+    }
 
-        // 靜默執行，不顯示執行中的提示
+    // 直接執行測試報告
     try {
       generateAndSendReports(year, parseInt(month), true);
       // 成功時不通知，讓使用者自己檢查信箱
     } catch (error) {
       ui.alert('執行失敗', `測試報告寄送失敗：${error.message}`, ui.ButtonSet.OK);
     }
-    
-  } catch (e) {
-    const errorMessage = `執行測試報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
-    Logger.log(errorMessage);
-    SpreadsheetApp.getUi().alert(`執行測試失敗: ${e.message}`);
-  }
+    
+  } catch (e) {
+    const errorMessage = `執行測試報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
+    Logger.log(errorMessage);
+    SpreadsheetApp.getUi().alert(`執行測試失敗: ${e.message}`);
+  }
 }
+
+
+
+
 
 /**
  * 【主要執行函式 - 自動排程用】
@@ -112,9 +117,26 @@ function generateAndSendReports(reportYear, reportMonth, isTest) {
       birthDate: headers.indexOf("出生日期")
     };
     
-    const reportJsMonth = reportMonth-1 ; // JavaScript 的月份是 0-11
-    const newHires = data.filter(row => { const d = row[colIndex.startDate]; return d instanceof Date && d.getFullYear().toString() === reportYear && d.getMonth() === reportJsMonth; });
-    const departingEmployees = data.filter(row => { const d = row[colIndex.endDate]; return d instanceof Date && d.getFullYear().toString() === reportYear && d.getMonth() === reportJsMonth; });
+    const reportJsMonth = reportMonth - 1; // JavaScript 的月份是 0-11
+
+    // 更穩健的日期過濾方式，以處理從 Google Sheet 來的不同日期格式
+    const newHires = data.filter(row => {
+      const dateVal = row[colIndex.startDate];
+      if (!dateVal) return false; // 忽略空白儲存格
+      const d = new Date(dateVal);
+      // 檢查是否為有效的日期物件
+      if (isNaN(d.getTime())) return false; 
+      return d.getFullYear().toString() === reportYear && d.getMonth() === reportJsMonth;
+    });
+
+    const departingEmployees = data.filter(row => {
+      const dateVal = row[colIndex.endDate];
+      if (!dateVal) return false; // 忽略空白儲存格
+      const d = new Date(dateVal);
+      // 檢查是否為有效的日期物件
+      if (isNaN(d.getTime())) return false;
+      return d.getFullYear().toString() === reportYear && d.getMonth() === reportJsMonth;
+    });
 
     // 4a. 【v11.2 修改】篩選出當月到職又離職的員工，在老闆的信件中僅顯示為離職
     // 建立一個包含所有離職員工 ID 的 Set，方便快速查找
