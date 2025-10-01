@@ -156,7 +156,7 @@ function generateBirthdayDoc(employees, companyName) {
 
   employees.forEach(emp => {
     const birthDate = Utilities.formatDate(emp.dob, Session.getScriptTimeZone(), 'MM/dd');
-    table.appendRow([
+    table.appendTableRow([
       emp.departmentCode,
       emp.departmentName,
       emp.employeeId,
