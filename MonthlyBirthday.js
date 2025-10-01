@@ -332,6 +332,6 @@ function test_runBirthdayReport() {
 
   } catch (e) {
     Logger.log(`【測試】建立壽星報告時發生錯誤: ${e.message}`);
-    Browser.msgBox('測試執行失敗', `執行過程中發生錯誤：\n${e.stack}`);
+    Browser.msgBox('測試執行失敗', `執行過程中發生錯誤：\n${e.stack}`, Browser.Buttons.OK);
   }
 }
