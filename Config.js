@@ -55,6 +55,28 @@ const CONFIG = {
   GROUP_SYNC_HEADER_NAMES: { EMAIL: '員工Email', START_DATE: '到職日期', END_DATE: '離職日期', DEPARTMENT: '部門' },
 
   // ===============================================================
+  // 每月壽星生日報告設定
+  // ===============================================================
+  // 員工總控制表中對應的欄位名稱
+  BIRTHDAY_COLUMN_NAMES: {
+    company: '投保單位名稱',
+    departmentCode: '部門代號',
+    departmentName: '部門',
+    employeeId: '員工代號',
+    employeeName: '員工姓名',
+    dob: '出生日期',
+    hireDate: '到職日期',
+    resignationDate: '離職日期',
+    insuranceUnit: '投保單位名稱'
+  },
+  // 產生後的壽星名單要歸檔到的資料夾 ID
+  TRENDFORCE_BIRTHDAY_FOLDER_ID: '1fyV1ljHXoZP8LAY5Um4y4_Ik7JUMoqtK', // 集邦
+  TOPOLOGY_BIRTHDAY_FOLDER_ID: '1Hm925rsc7KWuY9Bqm7VlZJnc4uznGjIq',   // 拓墣,
+
+  // Web App 部署網址，用於處理郵件按鈕的回呼
+  WEB_APP_URL: 'https://script.google.com/a/macros/trendforce.com/s/AKfycbw8p7MvUkuphdG4ClAX_yC0JhWj4prHlgs0T9_TMjsyfyxN3SPQv90NK8VfPYEXK4Av/exec',
+
+  // ===============================================================
   // 每月員工異動報告設定
   // ===============================================================
   BOSS_NAME: "Kevin",

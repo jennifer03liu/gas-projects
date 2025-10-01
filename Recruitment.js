@@ -1,7 +1,7 @@
 /**
  * @fileoverview 此檔案負責處理新進人員任用流程的後端邏輯。
  */
-function doGet() {
+function showRecruitmentForm() {
   return HtmlService.createHtmlOutputFromFile('RecruitmentForm').setTitle('新進人員任用登錄').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
 }
 
