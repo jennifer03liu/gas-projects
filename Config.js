@@ -61,7 +61,7 @@ const CONFIG = {
   BIRTHDAY_COLUMN_NAMES: {
     company: '投保單位名稱',
     departmentCode: '部門代號',
-    departmentName: '部門名稱',
+    departmentName: '部門',
     employeeId: '員工代號',
     employeeName: '員工姓名',
     dob: '出生日期',
