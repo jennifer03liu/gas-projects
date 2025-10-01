@@ -59,7 +59,7 @@ const CONFIG = {
   // ===============================================================
   // 員工總控制表中對應的欄位名稱
   BIRTHDAY_COLUMN_NAMES: {
-    company: '公司',
+    company: '投保單位名稱',
     departmentCode: '部門代號',
     departmentName: '部門名稱',
     employeeId: '員工代號',
