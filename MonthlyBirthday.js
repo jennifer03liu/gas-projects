@@ -178,31 +178,28 @@ function generateBirthdayDoc(employees, companyName) {
   // --- 設定主內容 ---
   body.appendParagraph(''); // 確保內容從頁首底下開始
 
-  const table = body.appendTable([
-    ['部門代號', '部門名稱', '員工代號', '員工姓名', '出生日期', '年齡', '年資(月)']
-  ]);
+  // 改為純文字測試
+  body.appendParagraph('部門代號, 部門名稱, 員工代號, 員工姓名, 出生日期, 年齡, 年資(月)').setBold(true);
+  body.appendParagraph('---');
 
-  // 更安全的版本 - 加入 null/undefined 檢查
   employees.forEach(emp => {
     const birthDate = Utilities.formatDate(emp.dob, Session.getScriptTimeZone(), 'MM/dd');
-    table.appendTableRow([
-      (emp.departmentCode || '').toString(),
-      (emp.departmentName || '').toString(),
-      (emp.employeeId || '').toString(),
-      (emp.employeeName || '').toString(),
-      birthDate || '',
-      (emp.age || 0).toString(),
-      (emp.seniority || 0).toString()
-    ]);
+    const textLine = [
+      emp.departmentCode,
+      emp.departmentName,
+      emp.employeeId,
+      emp.employeeName,
+      birthDate,
+      emp.age,
+      emp.seniority
+    ].join(', ');
+    body.appendParagraph(textLine);
   });
-  
-  // 美化表格樣式
-  table.getRow(0).editAsText().setBold(true);
   
   // --- 設定文件頁尾 ---
   const footer = doc.addFooter();
   const footerTable = footer.appendTable([
-    [`合  計： ${employees.length} 人`, `NO：0050-A4-2`]
+    [`合  計： ${employees.length} 人`]
   ]);
   footerTable.setBorderWidth(0);
   footerTable.getCell(0, 0).getChild(0).asParagraph().setBold(true);
@@ -361,6 +358,53 @@ function calculateSeniority(hireDate) {
   }
   
   return months < 0 ? 0 : months;
+}
+
+// ===============================================================
+// 偵錯用測試函式
+// ===============================================================
+/**
+ * 產生一個簡單的測試文件，用於驗證文件產生邏輯。
+ * 此版本會產生純文字而不是表格。
+ */
+function test_generateSimpleDoc() {
+  try {
+    Logger.log('開始執行簡單文件測試...');
+    
+    // 1. 建立假的員工資料
+    const fakeEmployees = [
+      {
+        departmentCode: 'TST-01',
+        departmentName: '測試部門A',
+        employeeId: 'T001',
+        employeeName: '王大明',
+        dob: new Date('1990-11-15'),
+        age: calculateAge(new Date('1990-11-15')),
+        seniority: 120
+      },
+      {
+        departmentCode: 'TST-02',
+        departmentName: '測試部門B',
+        employeeId: 'T002',
+        employeeName: '陳小美',
+        dob: new Date('1995-11-20'),
+        age: calculateAge(new Date('1995-11-20')),
+        seniority: 60
+      }
+    ];
+    
+    // 2. 呼叫文件產生函式
+    const testDoc = generateBirthdayDoc(fakeEmployees, '測試公司');
+    
+    // 3. 提示結果
+    const docUrl = testDoc.getUrl();
+    Logger.log(`測試文件已產生，請至此處查看：${docUrl}`);
+    Browser.msgBox('測試文件已產生', `請至以下網址查看文件：\n${docUrl}`, Browser.Buttons.OK);
+
+  } catch (e) {
+    Logger.log(`執行簡單文件測試時發生錯誤: ${e.stack}`);
+    Browser.msgBox('測試執行失敗', `執行過程中發生錯誤：\n${e.stack}`, Browser.Buttons.OK);
+  }
 }
 
 // ===============================================================
