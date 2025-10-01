@@ -114,7 +114,7 @@ function getEligibleBirthdayEmployees() {
       Logger.log(`員工 ${employeeId} 的到職日期格式無效: ${hireDateValue}`);
       return false;
     }
-    const monthsOfService = (seniorityBaseline.getFullYear() - hireDate.getFullYear()) * 12 + (seniorityBaseline.getMonth() - hireDate.getMonth());
+    const monthsOfService = calculateSeniority(hireDate);
     if (monthsOfService < 3) return false;
     
     return true;
@@ -182,16 +182,17 @@ function generateBirthdayDoc(employees, companyName) {
     ['部門代號', '部門名稱', '員工代號', '員工姓名', '出生日期', '年齡', '年資(月)']
   ]);
 
+  // 更安全的版本 - 加入 null/undefined 檢查
   employees.forEach(emp => {
     const birthDate = Utilities.formatDate(emp.dob, Session.getScriptTimeZone(), 'MM/dd');
     table.appendTableRow([
-      emp.departmentCode,
-      emp.departmentName,
-      emp.employeeId,
-      emp.employeeName,
-      birthDate,
-      emp.age,
-      emp.seniority
+      (emp.departmentCode || '').toString(),
+      (emp.departmentName || '').toString(),
+      (emp.employeeId || '').toString(),
+      (emp.employeeName || '').toString(),
+      birthDate || '',
+      (emp.age || 0).toString(),
+      (emp.seniority || 0).toString()
     ]);
   });
   
@@ -222,7 +223,7 @@ function sendApprovalEmail(trendforceDoc, topologyDoc, recipientEmail) {
   }
   const subject = '【審核】每月壽星生日禮金名單';
   
-  const webAppUrl = getWebAppUrl(); // 使用新的輔助函式
+  const webAppUrl = getWebAppUrl();
   
   let trendforceParams = trendforceDoc ? `&docId1=${trendforceDoc.getId()}` : '';
   let topologyParams = topologyDoc ? `&docId2=${topologyDoc.getId()}` : '';
@@ -269,11 +270,15 @@ function sendApprovalEmail(trendforceDoc, topologyDoc, recipientEmail) {
 // ===============================================================
 function doGet(e) {
   try {
-    const action = e.parameter.action;
+    const params = e.parameter;
+    if (!params || !params.action) {
+      return ContentService.createTextOutput('無效的請求：缺少 "action" 參數。');
+    }
+    const action = params.action;
 
     if (action === 'approve') {
-      const docId1 = e.parameter.docId1;
-      const docId2 = e.parameter.docId2;
+      const docId1 = params.docId1;
+      const docId2 = params.docId2;
       
       // 從 Config 讀取資料夾 ID
       const trendforceFolderId = getSetting('TRENDFORCE_BIRTHDAY_FOLDER_ID');
@@ -295,20 +300,23 @@ function doGet(e) {
       return ContentService.createTextOutput('無效的操作。');
     }
   } catch (err) {
+    Logger.log(`Web App 處理失敗: ${err.stack}`);
     return ContentService.createTextOutput(`處理您的請求時發生錯誤: ${err.message}`);
   }
 }
 
 function moveFileToFolder(fileId, folderId) {
+  if (!fileId || !folderId) {
+    throw new Error(`移動檔案失敗：檔案 ID 或資料夾 ID 為空。`);
+  }
   try {
     const file = DriveApp.getFileById(fileId);
     const folder = DriveApp.getFolderById(folderId);
     file.moveTo(folder);
     Logger.log(`檔案 ${file.getName()} 已成功移動至資料夾 ${folder.getName()}`);
   } catch (e) {
-    Logger.log(`移動檔案 ${fileId} 至資料夾 ${folderId} 時失敗: ${e.message}`);
-    // 可以考慮拋出錯誤或發送失敗通知
-    throw new Error(`移動檔案 ${fileId} 失敗`);
+    Logger.log(`移動檔案 ID ${fileId} 至資料夾 ID ${folderId} 時失敗: ${e.message}`);
+    throw new Error(`移動檔案 (ID: ${fileId}) 失敗。請檢查指令碼是否有權限存取該檔案以及目標資料夾 (ID: ${folderId})。`);
   }
 }
 
@@ -316,6 +324,20 @@ function moveFileToFolder(fileId, folderId) {
 // ===============================================================
 // 輔助函式
 // ===============================================================
+function getWebAppUrl() {
+  const webAppUrl = getSetting('WEB_APP_URL');
+  if (!webAppUrl) {
+    // Fallback to dynamic URL if setting is not present
+    const deployments = ScriptApp.getDeployments();
+    if (!deployments || deployments.length === 0) {
+      throw new Error('找不到 WEB_APP_URL 設定，也無法動態獲取部署 URL。請在 CONFIG 中設定或部署 Web App。');
+    }
+    // 返回最後一個（最新）部署的 URL
+    return deployments[deployments.length - 1].getUrl();
+  }
+  return webAppUrl;
+}
+
 function calculateAge(birthDate) {
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
@@ -327,12 +349,18 @@ function calculateAge(birthDate) {
 }
 
 function calculateSeniority(hireDate) {
-    const today = new Date();
-    const seniorityBaseline = new Date(today.getFullYear(), today.getMonth() + 2, 0); // 次月月底
-    let months = (seniorityBaseline.getFullYear() - hireDate.getFullYear()) * 12;
-    months -= hireDate.getMonth();
-    months += seniorityBaseline.getMonth();
-    return months <= 0 ? 0 : months;
+  const today = new Date();
+  const seniorityBaseline = new Date(today.getFullYear(), today.getMonth() + 2, 0); // 次月月底
+  
+  let months = (seniorityBaseline.getFullYear() - hireDate.getFullYear()) * 12;
+  months += seniorityBaseline.getMonth() - hireDate.getMonth();
+  
+  // 如果基準日的日期小於到職日的日期，則減一個月，代表未滿整月
+  if (seniorityBaseline.getDate() < hireDate.getDate()) {
+    months--;
+  }
+  
+  return months < 0 ? 0 : months;
 }
 
 // ===============================================================
