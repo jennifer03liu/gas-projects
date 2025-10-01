@@ -40,12 +40,17 @@ function getEligibleBirthdayEmployees() {
   // --- 設定 ---
   // 從 Config 讀取欄位名稱設定，並處理可能的字串格式
   const columnNamesSetting = getSetting('BIRTHDAY_COLUMN_NAMES');
-  const COLUMN_NAMES = typeof columnNamesSetting === 'string'
-    ? JSON.parse(columnNamesSetting)
-    : columnNamesSetting;
+  let COLUMN_NAMES;
+  try {
+    COLUMN_NAMES = typeof columnNamesSetting === 'string'
+      ? JSON.parse(columnNamesSetting)
+      : columnNamesSetting;
+  } catch (e) {
+    throw new Error(`解析 'BIRTHDAY_COLUMN_NAMES' 設定時發生錯誤，請檢查其 JSON 格式: ${e.message}`);
+  }
 
   if (!COLUMN_NAMES) {
-    throw new Error("在設定中找不到 'BIRTHDAY_COLUMN_NAMES'。");
+    throw new Error("在設定中找不到 'BIRTHDAY_COLUMN_NAMES' 或設定值為空。");
   }
 
   // --- 取得資料 ---
@@ -58,12 +63,19 @@ function getEligibleBirthdayEmployees() {
 
   // --- 建立欄位索引 ---
   const indices = {};
+  const missingColumns = [];
   for (const key in COLUMN_NAMES) {
     const index = headers.indexOf(COLUMN_NAMES[key]);
     if (index === -1) {
-      throw new Error(`在員工總控制表中找不到欄位: "${COLUMN_NAMES[key]}"`);
+      missingColumns.push(COLUMN_NAMES[key]);
+    } else {
+      indices[key] = index;
     }
-    indices[key] = index;
+  }
+
+  // 一次性回報所有找不到的欄位
+  if (missingColumns.length > 0) {
+    throw new Error(`在員工總控制表中找不到以下欄位: "${missingColumns.join(', ')}"`);
   }
 
   // --- 篩選邏輯 ---
@@ -72,20 +84,36 @@ function getEligibleBirthdayEmployees() {
   const seniorityBaseline = new Date(today.getFullYear(), today.getMonth() + 2, 0); // 次月月底
 
   const eligibleEmployees = data.filter(row => {
-    // 1. 排除員工代號包含 '_'
     const employeeId = row[indices.employeeId];
+    const insuranceUnit = row[indices.insuranceUnit];
+    const dobValue = row[indices.dob];
+    const hireDateValue = row[indices.hireDate];
+
+    // 0. 確保基本資料存在
+    if (!employeeId || !insuranceUnit || !dobValue || !hireDateValue) {
+      return false; // 如果必要欄位為空，直接排除
+    }
+
+    // 1. 排除員工代號包含 '_'
     if (employeeId.toString().includes('_')) return false;
 
     // 2. 排除特定投保單位
-    const insuranceUnit = row[indices.insuranceUnit];
     if (['新報', '荃富'].includes(insuranceUnit)) return false;
 
-    // 3. 判斷生日是否在下個月
-    const dob = new Date(row[indices.dob]);
+    // 3. 判斷生日是否在下個月 (並驗證日期有效性)
+    const dob = new Date(dobValue);
+    if (isNaN(dob.getTime())) {
+      Logger.log(`員工 ${employeeId} 的出生日期格式無效: ${dobValue}`);
+      return false;
+    }
     if (dob.getMonth() !== nextMonth) return false;
 
-    // 4. 判斷年資是否滿三個月
-    const hireDate = new Date(row[indices.hireDate]);
+    // 4. 判斷年資是否滿三個月 (並驗證日期有效性)
+    const hireDate = new Date(hireDateValue);
+    if (isNaN(hireDate.getTime())) {
+      Logger.log(`員工 ${employeeId} 的到職日期格式無效: ${hireDateValue}`);
+      return false;
+    }
     const monthsOfService = (seniorityBaseline.getFullYear() - hireDate.getFullYear()) * 12 + (seniorityBaseline.getMonth() - hireDate.getMonth());
     if (monthsOfService < 3) return false;
     
@@ -189,9 +217,12 @@ function generateBirthdayDoc(employees, companyName) {
 // ===============================================================
 function sendApprovalEmail(trendforceDoc, topologyDoc, recipientEmail) {
   const recipient = recipientEmail || getSetting('PAYMENT_NOTICE_RECIPIENT');
+  if (!recipient) {
+    throw new Error("找不到 'PAYMENT_NOTICE_RECIPIENT' 設定，無法發送審核郵件。");
+  }
   const subject = '【審核】每月壽星生日禮金名單';
   
-  const webAppUrl = ScriptApp.getService().getUrl();
+  const webAppUrl = getWebAppUrl(); // 使用新的輔助函式
   
   let trendforceParams = trendforceDoc ? `&docId1=${trendforceDoc.getId()}` : '';
   let topologyParams = topologyDoc ? `&docId2=${topologyDoc.getId()}` : '';
