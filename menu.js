@@ -16,6 +16,7 @@ function onOpen() {
     .addSeparator()
     .addItem('手動觸發每月員工報告', 'sendMonthlyEmployeeReports')
     .addItem('執行測試報告', 'sendTestReport')
+    .addItem('測試每月壽星報告', 'test_runBirthdayReport')
     .addSeparator()
     .addItem('修改信件設定', 'showEmailSettingsUI')
     .addToUi();
