@@ -1,9 +1,11 @@
 /**
  * @fileoverview 每月定時發送新進與離職員工報告。
- * @version 15
+ * @version 16
  * 
- * v15 改進：
- * - 改善測試報告的 UI 體驗，改為靜默執行，僅在失敗時顯示錯誤訊息
+ * v16 改進：
+ * - 新增 sendMonthlyReportReminder 函式，用於排程觸發，寄送當月份的報告作為提醒。
+ * - 為老闆的郵件過濾掉員工代號包含 "P" 的員工。
+ * - 為測試郵件（提醒郵件）加入紅色粗體的警示訊息。
  */
 
 /**
@@ -50,7 +52,28 @@ function sendTestReport() {
 }
 
 
+/**
+ * 【新增功能 - 自動排程用】
+ * 每月定時發送提醒郵件給自己，檢查當月報告內容。
+ * 預計排程在每月 25 號執行。
+ */
+function sendMonthlyReportReminder() {
+  try {
+    const today = new Date();
+    const reportYear = today.getFullYear().toString();
+    const reportMonth = today.getMonth() + 1;
 
+    // 呼叫核心函式，isTest 設為 true，寄送當月份的測試報告給自己
+    generateAndSendReports(reportYear, reportMonth, true);
+
+    console.log('每月提醒郵件已成功寄出！');
+  } catch (e) {
+    const errorMessage = `執行提醒郵件時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
+    Logger.log(errorMessage);
+    // 在背景執行，可以選擇是否要通知錯誤
+    // GmailApp.sendEmail(Session.getActiveUser().getEmail(), "員工報告提醒腳本錯誤", errorMessage);
+  }
+}
 
 
 /**
@@ -139,24 +162,36 @@ function generateAndSendReports(reportYear, reportMonth, isTest) {
     });
 
     // 4a. 【v11.2 修改】篩選出當月到職又離職的員工，在老闆的信件中僅顯示為離職
-    // 建立一個包含所有離職員工 ID 的 Set，方便快速查找
     const departingEmployeeIds = new Set(departingEmployees.map(row => row[colIndex.employeeId]));
-    // 產生一個給老闆用的新進員工名單，此名單會排除掉也出現在離職名單中的員工
-    const newHiresForBoss = newHires.filter(row => !departingEmployeeIds.has(row[colIndex.employeeId]));
+    const newHiresForBossInitial = newHires.filter(row => !departingEmployeeIds.has(row[colIndex.employeeId]));
 
-        // 5. 寄送 Email
-    if (newHires.length > 0 || departingEmployees.length > 0) {
-      // 【v11.2 修改】老闆的信件使用過濾後的新進名單 (newHiresForBoss)
-      sendBossEmail(newHiresForBoss, departingEmployees, colIndex, excelBlob, reportYear, reportMonth, isTest);
-      // 保險聯絡人的信件仍使用完整的新進名單 (newHires)，因為加退保都需要通知
-      sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth, isTest);
+    // 4b. 【新需求】從給老闆的名單中，過濾掉員工代號包含 "P" 的員工
+    const newHiresForBoss = newHiresForBossInitial.filter(row => {
+      const empId = row[colIndex.employeeId] || '';
+      return !empId.includes('P');
+    });
+    const departingEmployeesForBoss = departingEmployees.filter(row => {
+      const empId = row[colIndex.employeeId] || '';
+      return !empId.includes('P');
+    });
+
+
+    // 5. 寄送 Email
+    // 檢查是否有任何異動，或是否為測試模式 (提醒郵件)
+    if (newHires.length > 0 || departingEmployees.length > 0 || isTest) {
+      // 老闆的信件使用過濾後的名單 (ForBoss)
+      sendBossEmail(newHiresForBoss, departingEmployeesForBoss, colIndex, excelBlob, reportYear, reportMonth, isTest);
+      
+      // 如果不是測試模式，才寄送給保險聯絡人
+      if (!isTest) {
+        // 保險聯絡人的信件仍使用完整的新進名單 (newHires)，因為加退保都需要通知
+        sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth, isTest);
+      }
     } else {
       Logger.log(`在 ${reportYear} 年 ${reportMonth} 月沒有偵測到員工異動，但仍會寄送該月通訊錄。`);
-      // 【修正 1】在呼叫時補上 isTest 參數
       sendBossEmail([], [], colIndex, excelBlob, reportYear, reportMonth, isTest);
     }
-    // SpreadsheetApp.getUi().alert('員工異動報告已成功寄出！'); // 舊的 UI 通知
-    console.log('員工異動報告已成功寄出！'); // 改為背景記錄，不在介面跳出通知
+    console.log('員工異動報告已成功寄出！');
 }
 
 /**
@@ -226,10 +261,16 @@ function findFileInYearFolder(baseFolderId, yearStr, fileName) {
  * 輔助函式：寄送 Email 給老闆。
  * @param {boolean} isTest 是否為測試模式。
  */
-// 【修正 2】在函式定義中加入 isTest 參數
 function sendBossEmail(newHires, departingEmployees, colIndex, attachmentBlob, reportYear, reportMonth, isTest) {
   let subject = `${reportYear}.${reportMonth}月員工通訊錄`;
   let htmlBody = `<p>Dear ${getSetting('BOSS_NAME')},</p><p>${reportYear}年${reportMonth}月員工異動名單整理如下，該月通訊錄已夾帶於附件中，請查收，謝謝。</p>`;
+  
+  // 如果是測試模式 (提醒郵件)，在最前面加上警示訊息
+  if (isTest) {
+    const reminderMessage = '<p style="color: red; font-weight: bold;">【提醒】此為預覽信件，請記得去更新總控制台，次月1號寄出的信件，才會顯示正確資訊！</p>';
+    htmlBody = reminderMessage + htmlBody;
+  }
+
   if (newHires.length > 0) {
     htmlBody += `<p><b>${reportMonth}月新進員工名單:</b></p><table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;"><tr style="background-color:#f2f2f2;"><th>部門</th><th>中文名</th><th>匿稱</th><th>職稱</th><th>分機</th><th>Mail</th><th>Telegram</th><th>手機</th></tr>`;
     newHires.forEach(row => { htmlBody += `<tr><td>${row[colIndex.department]}</td><td>${row[colIndex.chineseName]}</td><td>${row[colIndex.englishName]}</td><td>${row[colIndex.jobTitle]}</td><td>${row[colIndex.extension]}</td><td>${row[colIndex.mail]}</td><td>${row[colIndex.telegram]}</td><td>${row[colIndex.mobile]}</td></tr>`; });
@@ -255,7 +296,6 @@ function sendBossEmail(newHires, departingEmployees, colIndex, attachmentBlob, r
     mailOptions.cc = cc;
   }
   
-  // 【修正 3】使用 recipient 變數來寄信
   GmailApp.sendEmail(recipient, subject, "", mailOptions);
   console.log(`已寄送 ${subject} 給 ${recipient}。`);
 }
@@ -264,7 +304,6 @@ function sendBossEmail(newHires, departingEmployees, colIndex, attachmentBlob, r
  * 輔助函式：寄送 Email 給保險聯絡人。
  * @param {boolean} isTest 是否為測試模式。
  */
-// 【修正 2】在函式定義中加入 isTest 參數
 function sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth, isTest) {
     let subject = `${reportYear}年度${reportMonth}月之三家公司團保加退保名單`;
     let htmlBody = `<p>Dear ${getSetting('INSURANCE_NAME')},</p><p>以下通知您${reportYear}年${reportMonth}月新到職人員與離職人員名單，<br>如有問題請隨時回信告知，謝謝。</p>`;
@@ -292,7 +331,6 @@ function sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, 
       mailOptions.cc = cc;
     }
     
-    // 【修正 3】使用 recipient 變數來寄信
     GmailApp.sendEmail(recipient, subject, "", mailOptions);
     console.log(`已寄送 ${subject} 給 ${recipient}。`);
 }
