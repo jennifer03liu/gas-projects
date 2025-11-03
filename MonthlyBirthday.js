@@ -92,12 +92,17 @@ function generateFinalReports() {
       return msg;
     }
 
+    const nextMonthDate = new Date();
+    nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+    const reportYear = nextMonthDate.getFullYear();
+    const reportMonth = nextMonthDate.getMonth() + 1;
+
     let successMessages = '壽星名單產生成功！\n\n';
     Logger.log(`找到 ${trendforce.length} 位集邦壽星, ${topology.length} 位拓墣壽星。`);
 
     // 產生並歸檔「集邦」壽星名單
     if (trendforce.length > 0) {
-      const trendforceDoc = generateBirthdayDoc(trendforce, '集邦');
+      const trendforceDoc = generateBirthdayDoc(trendforce, '集邦', reportYear, reportMonth);
       const trendforceFolderId = getSetting('TRENDFORCE_BIRTHDAY_FOLDER_ID');
       moveFileToFolder(trendforceDoc.getId(), trendforceFolderId);
       const successMsg = `檔案 "${trendforceDoc.getName()}" 已產生並歸檔至集邦資料夾。`;
@@ -107,7 +112,7 @@ function generateFinalReports() {
 
     // 產生並歸檔「拓墣」壽星名單
     if (topology.length > 0) {
-      const topologyDoc = generateBirthdayDoc(topology, '拓墣');
+      const topologyDoc = generateBirthdayDoc(topology, '拓墣', reportYear, reportMonth);
       const topologyFolderId = getSetting('TOPOLOGY_BIRTHDAY_FOLDER_ID');
       moveFileToFolder(topologyDoc.getId(), topologyFolderId);
       const successMsg = `檔案 "${topologyDoc.getName()}" 已產生並歸檔至拓墣資料夾。`;
@@ -243,13 +248,8 @@ function getEligibleBirthdayEmployees() {
 // ===============================================================
 // 2. 產生 Google Doc 生日名單 (*** 已修改為表格格式 ***)
 // ===============================================================
-function generateBirthdayDoc(employees, companyName) {
+function generateBirthdayDoc(employees, companyName, reportYear, reportMonth) {
   const fullCompanyName = companyName.includes('集邦') ? '集邦科技股份有限公司' : '拓墣科技股份有限公司';
-
-  const nextMonthDate = new Date();
-  nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
-  const reportYear = nextMonthDate.getFullYear();
-  const reportMonth = nextMonthDate.getMonth() + 1;
 
   const yy = (reportYear - 2000).toString();
   const mm = ('0' + reportMonth).slice(-2);
@@ -482,3 +482,4 @@ function test_runBirthdayReport() {
     SpreadsheetApp.getUi().alert(`【測試】執行過程中發生錯誤：\n${e.message}`);
   }
 }
+
