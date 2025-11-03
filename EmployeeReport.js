@@ -167,11 +167,11 @@ function generateAndSendReports(reportYear, reportMonth, isTest) {
 
     // 4b. 【新需求】從給老闆的名單中，過濾掉員工代號包含 "P" 的員工
     const newHiresForBoss = newHiresForBossInitial.filter(row => {
-      const empId = row[colIndex.employeeId] || '';
+      const empId = String(row[colIndex.employeeId] || '');
       return !empId.includes('P');
     });
     const departingEmployeesForBoss = departingEmployees.filter(row => {
-      const empId = row[colIndex.employeeId] || '';
+      const empId = String(row[colIndex.employeeId] || '');
       return !empId.includes('P');
     });
 
@@ -182,11 +182,10 @@ function generateAndSendReports(reportYear, reportMonth, isTest) {
       // 老闆的信件使用過濾後的名單 (ForBoss)
       sendBossEmail(newHiresForBoss, departingEmployeesForBoss, colIndex, excelBlob, reportYear, reportMonth, isTest);
       
-      // 如果不是測試模式，才寄送給保險聯絡人
-      if (!isTest) {
-        // 保險聯絡人的信件仍使用完整的新進名單 (newHires)，因為加退保都需要通知
-        sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth, isTest);
-      }
+      // 保險聯絡人的信件仍使用完整的新進名單 (newHires)，因為加退保都需要通知
+      // 在測試模式下，此郵件會自動導向給當前使用者
+      sendInsuranceEmail(newHires, departingEmployees, colIndex, reportYear, reportMonth, isTest);
+
     } else {
       Logger.log(`在 ${reportYear} 年 ${reportMonth} 月沒有偵測到員工異動，但仍會寄送該月通訊錄。`);
       sendBossEmail([], [], colIndex, excelBlob, reportYear, reportMonth, isTest);
