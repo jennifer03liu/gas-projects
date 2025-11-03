@@ -483,3 +483,102 @@ function test_runBirthdayReport() {
   }
 }
 
+
+/**
+ * 【新增功能 - 自動排程用】
+ * 直接產生最終的壽星報告，不經過人工審核流程。
+ * 產出後會發送一封含有檔案連結的通知信。
+ */
+function generateBirthdayReport_direct() {
+  try {
+    Logger.log('【直接產生】開始執行每月壽星報告...');
+
+    // 1. 決定目標月份和年份
+    const nextMonthDate = new Date();
+    nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+    const reportYear = nextMonthDate.getFullYear();
+    const reportMonth = nextMonthDate.getMonth() + 1;
+    
+    // 2. 組合預期檔案名稱
+    const yy = (reportYear - 2000).toString();
+    const mm = ('0' + reportMonth).slice(-2);
+    const trendforceFileName = `集邦${yy}${mm}壽星`;
+    const topologyFileName = `拓墣${yy}${mm}壽星`;
+
+    // 3. 檢查檔案是否已存在
+    const trendforceFolderId = getSetting('TRENDFORCE_BIRTHDAY_FOLDER_ID');
+    const topologyFolderId = getSetting('TOPOLOGY_BIRTHDAY_FOLDER_ID');
+    const trendforceFolder = DriveApp.getFolderById(trendforceFolderId);
+    const topologyFolder = DriveApp.getFolderById(topologyFolderId);
+
+    let existingFiles = [];
+    const trendforceFiles = trendforceFolder.getFilesByName(trendforceFileName);
+    if (trendforceFiles.hasNext()) {
+      existingFiles.push(trendforceFiles.next().getName());
+    }
+    const topologyFiles = topologyFolder.getFilesByName(topologyFileName);
+    if (topologyFiles.hasNext()) {
+      existingFiles.push(topologyFiles.next().getName());
+    }
+
+    // 4. 如果檔案已存在，寄信通知並中止
+    if (existingFiles.length > 0) {
+      const subject = `【系統通知】${reportMonth}月壽星報告已存在`;
+      const message = `您好，系統偵測到 ${reportMonth} 月的壽星報告檔案已經存在，因此未重複產生。\n\n已存在檔案列表：\n- ${existingFiles.join('\n- ' )}`;
+      Logger.log(message);
+      
+      const recipient = getSetting('PAYMENT_NOTICE_RECIPIENT') || Session.getActiveUser().getEmail();
+      if (recipient && recipient !== 'your-email@example.com') {
+        GmailApp.sendEmail(recipient, subject, message);
+      }
+      return; // 中止執行
+    }
+
+    // 5. 如果檔案不存在，繼續執行產生流程
+    const message = generateFinalReports();
+    
+    // 如果 message 回傳的是找不到壽星的訊息，也一樣寄信通知
+    if (!message.includes('✓')) {
+       Logger.log(message);
+    } else {
+       Logger.log('每月壽星報告已直接產生完畢。');
+    }
+
+    // 6. 發送完成通知郵件
+    const recipient = getSetting('PAYMENT_NOTICE_RECIPIENT') || Session.getActiveUser().getEmail();
+    const subject = '【系統通知】每月壽星報告已自動產生';
+    
+    const htmlBody = `
+      <div style="font-family: Arial, 'Microsoft JhengHei', sans-serif; line-height: 1.6;">
+        <p>您好，</p>
+        <p>系統已於今日，自動產生並歸檔 ${reportMonth} 月的壽星生日禮金名單。</p>
+        <p>詳細產出結果如下：</p>
+        <pre style="background-color:#f4f4f4; padding: 15px; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word;">${message.replace(/\n/g, '<br>')}</pre>
+        <p style="color: #888888; font-size: 14px;"><i>(此為系統自動發送郵件，如有問題請聯繫 IT 人員)</i></p>
+      </div>
+    `;
+    
+    if (recipient && recipient !== 'your-email@example.com') {
+      GmailApp.sendEmail(recipient, subject, '', { 
+        htmlBody: htmlBody,
+        name: getSetting('SENDER_NAME') || 'HR-System'
+      });
+      Logger.log(`成功通知郵件已發送至 ${recipient}`);
+    } else {
+      Logger.log('警告：找不到有效的 PAYMENT_NOTICE_RECIPIENT 設定，無法發送通知郵件。');
+    }
+
+  } catch (e) {
+    const errorMessage = `!!!!!!!!!! 直接產生壽星報告過程中發生嚴重錯誤 !!!!!!!!!!\n${e.stack}`;
+    Logger.log(errorMessage);
+    // 發生錯誤時，也嘗試發信通知
+    try {
+      const recipient = getSetting('PAYMENT_NOTICE_RECIPIENT');
+      if (recipient && recipient !== 'your-email@example.com') {
+        GmailApp.sendEmail(recipient, '【錯誤】每月壽星報告自動產生失敗', `執行過程中發生嚴重錯誤：\n${e.stack}`);
+      }
+    } catch (emailError) {
+      Logger.log(`!!!!!!!!!! 連錯誤通知信都無法發送 !!!!!!!!!!\n${emailError.stack}`);
+    }
+  }
+}
