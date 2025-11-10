@@ -56,6 +56,7 @@ function sendManagerNotificationEmail(newFile, rowData, managerEmail) {
           <li><strong>面談溝通：</strong>完成評核後，請您與員工安排面談，溝通考核結果。</li>
           <li><strong>簽核繳交：</strong>面談完成後，請將最終的考核表列印並簽核繳交。</li>
       </ol>
+      <p style="color: red;"><b>請注意：此文件包含薪資等個人敏感資訊，具高度機密性，請務必由您（直屬主管）親自完成簽核並繳交至人資部門。</b></p>
       <p style="text-align: center; margin: 25px 0;"><a href="${newFile.getUrl()}" style="background-color:#007bff;color:white;padding:12px 25px;text-decoration:none;border-radius:5px;font-size:16px;font-weight:bold;">點此開啟線上考核表</a></p>
       <p>敬請於 <strong style="color: red;">${calculateDueDate(rowData['試用截止日'])}</strong> 前將表單填寫完畢，並完成所有考核流程，謝謝。</p>
       <p style="color: #888888; font-size: 14px;">(提醒：若繳回日適逢假日，則順延至次一工作日。)</p>
@@ -66,4 +67,51 @@ function sendManagerNotificationEmail(newFile, rowData, managerEmail) {
     name: getSetting('SENDER_NAME'),
     cc: getSetting('HR_MANAGER_CC_EMAIL')
   });
+}
+
+function previewManagerEmail() {
+  // 1. 建立模擬資料
+  const sampleRowData = {
+    '員工姓名': '王大明',
+    '員工代號': 'EMP001',
+    '部門': '研發部',
+    '直屬主管': '陳經理',
+    '試用截止日': new Date(new Date().getTime() + 14 * 24 * 60 * 60 * 1000) // 假設14天後到期
+  };
+
+  const sampleFile = {
+    getUrl: function() { return 'https://docs.google.com/spreadsheets/d/EXAMPLE_FILE_ID/edit'; }
+  };
+
+  // 2. 產生郵件標題與內容 (與 sendManagerNotificationEmail 函式同步)
+  const subject = `【試用期屆滿考核通知】${sampleRowData['部門']}同仁 ${sampleRowData['員工姓名']} (${sampleRowData['員工代號']})`;
+  const body = `
+    <div style="font-family: Arial, 'Microsoft JhengHei', sans-serif; line-height: 1.6;">
+      <p>Dear ${sampleRowData['直屬主管'] || '主管'},</p>
+      <p>此信件通知您，貴部門同仁 <strong>${sampleRowData['員工姓名']}</strong> (員工代號: ${sampleRowData['員工代號']}) 試用期將於 <strong style="color: red;">${formatDateSimple(sampleRowData['試用截止日'])}</strong> 屆滿。</p>
+      <p>請您與同仁依照下列流程，一同完成此次考核。</p>
+      <h3 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 5px;">考核流程說明</h3>
+      <ol style="padding-left: 20px;">
+          <li><strong>員工自評：</strong>此檔案已同步提供予 <strong>${sampleRowData['員工姓名']}</strong>，請其於線上考核表中完成第一部分「工作項目與熟練度自評」。</li>
+          <li><strong>主管評核：</strong>待員工完成後，請您開啟同一個線上考核表，接續完成「主管綜合評核」。</li>
+          <li><strong>面談溝通：</strong>完成評核後，請您與員工安排面談，溝通考核結果。</li>
+          <li><strong>簽核繳交：</strong>面談完成後，請將最終的考核表列印並簽核繳交。</li>
+      </ol>
+      <p style="color: red;"><b>請注意：此文件包含薪資等個人敏感資訊，具高度機密性，請務必由您（直屬主管）親自完成簽核並繳交至人資部門。</b></p>
+      <p style="text-align: center; margin: 25px 0;"><a href="${sampleFile.getUrl()}" style="background-color:#007bff;color:white;padding:12px 25px;text-decoration:none;border-radius:5px;font-size:16px;font-weight:bold;">點此開啟線上考核表</a></p>
+      <p>敬請於 <strong style="color: red;">${calculateDueDate(sampleRowData['試用截止日'])}</strong> 前將表單填寫完畢，並完成所有考核流程，謝謝。</p>
+      <p style="color: #888888; font-size: 14px;">(提醒：若繳回日適逢假日，則順延至次一工作日。)</p>
+    </div>
+  `;
+  
+  const htmlBody = body + getGmailSignature();
+
+  // 3. 將郵件內容輸出到日誌
+  Logger.log('--- 郵件預覽 ---');
+  Logger.log('Subject: ' + subject);
+  Logger.log('--- HTML Body ---');
+  Logger.log(htmlBody);
+  
+  // 4. 提示使用者如何查看
+  SpreadsheetApp.getUi().alert('預覽郵件的 HTML 內容已輸出至 Apps Script 的執行紀錄中。請依說明查看。');
 }

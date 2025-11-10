@@ -9,45 +9,59 @@
  */
 
 /**
- * 【測試用函式】
- * 由 UI 選單觸發，讓使用者輸入年月，產生測試報告並寄給自己。
+ * 【手動補發正式報告】
+ * 由 UI 選單觸發，讓使用者輸入年月，產生並正式寄送該月份的報告給相關收件人。
+ * 用於自動排程失效時的備援方案。
  */
-function sendTestReport() {
+function manualSendOfficialReport() {
   try {
     const ui = SpreadsheetApp.getUi();
     
     // 提示使用者輸入年份
-    const yearResponse = ui.prompt('測試報告', '請輸入報告年份 (YYYY)，例如: 2025', ui.ButtonSet.OK_CANCEL);
+    const yearResponse = ui.prompt('手動補發正式報告', '請輸入報告年份 (YYYY)，例如: 2025', ui.ButtonSet.OK_CANCEL);
     if (yearResponse.getSelectedButton() !== ui.Button.OK || yearResponse.getResponseText() === '') {
       return; // 使用者取消操作
     }
     const year = yearResponse.getResponseText().trim();
 
     // 提示使用者輸入月份
-    const monthResponse = ui.prompt('測試報告', '請輸入報告月份 (1-12)，例如: 8', ui.ButtonSet.OK_CANCEL);
+    const monthResponse = ui.prompt('手動補發正式報告', '請輸入報告月份 (1-12)。\n例如：輸入 10，即代表產生並寄送 10 月份的正式報告。', ui.ButtonSet.OK_CANCEL);
     if (monthResponse.getSelectedButton() !== ui.Button.OK || monthResponse.getResponseText() === '') {
       return; // 使用者取消操作
     }
     const month = monthResponse.getResponseText().trim();
 
-    // 簡單驗證輸入格式
+    // 驗證輸入格式
     if (isNaN(year) || isNaN(month) || month < 1 || month > 12 || year.length !== 4) {
       ui.alert('輸入無效', '請輸入正確的四位數年份和 1-12 的月份。', ui.ButtonSet.OK);
       return;
     }
 
-    // 直接執行測試報告
+    // 發送前最終確認
+    const confirmResponse = ui.alert(
+      '即將寄送正式報告',
+      `您確定要將 ${year} 年 ${month} 月的員工異動報告，正式寄送給老闆與保險聯絡人嗎？\n\n此操作無法復原。`,
+      ui.ButtonSet.OK_CANCEL
+    );
+
+    if (confirmResponse !== ui.Button.OK) {
+      ui.alert('操作已取消');
+      return;
+    }
+
+    // 執行正式報告寄送
     try {
-      generateAndSendReports(year, parseInt(month), true);
-      // 成功時不通知，讓使用者自己檢查信箱
+      ui.alert('正在處理中...', '報告產生與寄送需要一些時間，完成後會通知您。', ui.ButtonSet.OK);
+      generateAndSendReports(year, parseInt(month), false); // isTest 設為 false
+      ui.alert('成功', `${year} 年 ${month} 月的員工異動報告已成功寄出。`, ui.ButtonSet.OK);
     } catch (error) {
-      ui.alert('執行失敗', `測試報告寄送失敗：${error.message}`, ui.ButtonSet.OK);
+      ui.alert('執行失敗', `報告寄送失敗：${error.message}`, ui.ButtonSet.OK);
     }
     
   } catch (e) {
-    const errorMessage = `執行測試報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
+    const errorMessage = `執行手動補發報告時發生錯誤: ${e.message}\n錯誤堆疊: ${e.stack}`;
     Logger.log(errorMessage);
-    SpreadsheetApp.getUi().alert(`執行測試失敗: ${e.message}`);
+    SpreadsheetApp.getUi().alert(`執行失敗: ${e.message}`);
   }
 }
 
