@@ -56,7 +56,7 @@ function sendManagerNotificationEmail(newFile, rowData, managerEmail) {
           <li><strong>面談溝通：</strong>完成評核後，請您與員工安排面談，溝通考核結果。</li>
           <li><strong>簽核繳交：</strong>面談完成後，請將最終的考核表列印並簽核繳交。</li>
       </ol>
-      <p style="color: red;"><b>請注意：此文件包含薪資等個人敏感資訊，具高度機密性，請務必由您（直屬主管）親自完成簽核並繳交至人資部門。</b></p>
+      <p style="color: red;"><b>請注意：此文件包含薪資等個人敏感資訊，具高度機密性，請務必由您（直屬主管）親自完成簽核並繳交至幕僚室。</b></p>
       <p style="text-align: center; margin: 25px 0;"><a href="${newFile.getUrl()}" style="background-color:#007bff;color:white;padding:12px 25px;text-decoration:none;border-radius:5px;font-size:16px;font-weight:bold;">點此開啟線上考核表</a></p>
       <p>敬請於 <strong style="color: red;">${calculateDueDate(rowData['試用截止日'])}</strong> 前將表單填寫完畢，並完成所有考核流程，謝謝。</p>
       <p style="color: #888888; font-size: 14px;">(提醒：若繳回日適逢假日，則順延至次一工作日。)</p>
